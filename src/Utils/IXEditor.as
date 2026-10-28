@@ -56,27 +56,34 @@ class IXEditor {
         int downloadsFinished = 0;
         int downloadsTotal = items.Length;
         isDownloading = true;
-        RequestItemTuple@[] requests = {};
+
+        // Queue up items that still need to be downloaded
+        IX::Item@[] pending = {};
         for(uint i = 0; i < items.Length; i++) {
             auto item = items[i];
             IO::CreateFolder(Path::GetDirectoryName(item.GetCachePath()), true);
 
             if(!IO::FileExists(item.GetCachePath())) {
-                auto url = "https://" + MXURL + "/item/download/" + item.ID;                
-                auto request = Net::HttpGet(url);
-                requests.InsertLast(RequestItemTuple(request, item));
+                pending.InsertLast(item);
             } else {
                 // file already exists in downloads cache, increment counter
                 downloadsFinished++;
             }
         }
 
-        int totalRequestsCount = items.Length;
+        // Keep at most 6 requests in flight; IX blocks excess concurrent
+        // connections with a 403, which would otherwise silently drop items
+        const uint MaxActiveRequests = 6;
+        RequestItemTuple@[] requests = {};
+        uint nextPending = 0;
+
         // Wait for all downloads to complete
         while(true) {
             if(importCanceled)
                 return CleanCanceledImport();
-            statusText = "Downloading [" + downloadsFinished + " / " + totalRequestsCount + "]";
+            statusText = "Downloading [" + downloadsFinished + " / " + downloadsTotal + "]";
+
+            // Reap finished requests
             for(int i = int(requests.Length) - 1; i >= 0; i--) {
                 auto ri = requests[i];
                 if(!ri.request.Finished())
@@ -90,6 +97,16 @@ class IXEditor {
                 }
                 ri.request.SaveToFile(ri.item.GetCachePath());
             }
+
+            // Start new requests up to the concurrency limit
+            while(requests.Length < MaxActiveRequests && nextPending < pending.Length) {
+                auto item = pending[nextPending];
+                nextPending++;
+                auto url = "https://" + MXURL + "/item/download/" + item.ID;
+                auto request = Net::HttpGet(url);
+                requests.InsertLast(RequestItemTuple(request, item));
+            }
+
             if(downloadsFinished == downloadsTotal) 
                 break;
             yield();
