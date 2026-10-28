@@ -165,10 +165,44 @@ namespace Work {
         }
     }
 
+    // A backup is only needed while LoadItem() runs. One that's still around when a
+    // scan starts means the previous run was interrupted (crash, plugin reload), so
+    // clean it up before it can get in the way of the next run.
+    void CleanStaleBackups() {
+        auto paths = IO::IndexFolder(GetItemsFolder(), true);
+        for(uint i = 0; i < paths.Length; i++) {
+            auto backupPath = paths[i];
+            auto lower = backupPath.ToLower();
+            if(!lower.EndsWith(".tmp")) continue;
+            if(!IO::FileExists(backupPath)) continue;
+            int gbxIndex = lower.LastIndexOf(".item.gbx");
+            if(gbxIndex < 0) continue;
+            string originalPath = backupPath.SubStr(0, gbxIndex + 9);
+
+            if(!IO::FileExists(originalPath)) {
+                // Interrupted before the game re-created the item: the backup is the
+                // only copy left, so put it back where the item used to be.
+                print("Restoring leftover backup: " + originalPath);
+                IO::Move(backupPath, originalPath);
+            } else if(IO::FileSize(originalPath) != IO::FileSize(backupPath)) {
+                // Interrupted after the game created an empty item but before the
+                // backup was copied over it: restore the real content.
+                print("Restoring leftover backup over incomplete item: " + originalPath);
+                ixEditor.CopyFile(backupPath, originalPath);
+                IO::Delete(backupPath);
+            } else {
+                // Interrupted after the content was already copied back.
+                print("Removing redundant backup: " + backupPath);
+                IO::Delete(backupPath);
+            }
+        }
+    }
+
     void Scan() {
         @importedItems = {};
         @loadedItems = {};
         @unloadedItems = {};
+        CleanStaleBackups();
         auto customItemsNode = GetCustomItemsNode();
         ExploreCustomItemsNode(customItemsNode);
         // PrintLoadedItems(loadedItems);
@@ -206,27 +240,39 @@ namespace Work {
     void ImportUnloaded() {
         if(busy) return;
         busy = true;
-        Work::Scan();
-        if(!scanned) {
-            warn("Scan for items before calling import unloaded");
-            return;
-        }
-        for(int i = int(unloadedItems.Length) - 1; i >= 0; i--) {
-            auto path = unloadedItems[i];
-            auto relParts = path.Split(GetItemsFolder());
-            if(relParts.Length < 2) continue;
-            string relPath = relParts[1];
-
-            print("Importing unloaded item: " + relPath);
-            string tmpPath = path + ".tmp";
-            IO::Move(path, tmpPath);
-            if(ixEditor.LoadItem(tmpPath, relPath)) {
-                IO::Delete(tmpPath);
-                unloadedItems.RemoveAt(i);
-                importedItems.InsertLast(relPath);
-            } else {
-                IO::Move(tmpPath, path);
+        try {
+            Work::Scan();
+            if(!scanned) {
+                warn("Scan for items before calling import unloaded");
+                busy = false;
+                return;
             }
+            for(int i = int(unloadedItems.Length) - 1; i >= 0; i--) {
+                auto path = unloadedItems[i];
+                auto relParts = path.Split(GetItemsFolder());
+                if(relParts.Length < 2) continue;
+                string relPath = relParts[1];
+
+                print("Importing unloaded item: " + relPath);
+                // Unique name: a backup left behind by an interrupted run can never
+                // make this Move fail (IO::Move does not replace existing files).
+                string backupPath = path + "." + tostring(Time::Now) + ".tmp";
+                IO::Move(path, backupPath);
+                if(ixEditor.LoadItem(backupPath, relPath)) {
+                    IO::Delete(backupPath);
+                    unloadedItems.RemoveAt(i);
+                    importedItems.InsertLast(relPath);
+                } else {
+                    // LoadItem already re-created the item at `path` (Save As) and
+                    // copied the backup over it, so `path` normally exists here.
+                    // IO::Move does not replace an existing file, so remove it first.
+                    if(IO::FileExists(path))
+                        IO::Delete(path);
+                    IO::Move(backupPath, path);
+                }
+            }
+        } catch {
+            error("Error while importing items: " + getExceptionInfo());
         }
         busy = false;
     }
