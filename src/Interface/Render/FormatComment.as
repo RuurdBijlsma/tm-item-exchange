@@ -66,7 +66,7 @@ namespace IfaceRender {
                 auto parts = part.Split(']');
                 itemID = parts[0];
                 if(parts.Length > 1){
-                    text = string::Join(parts, ']').SubStr(itemID.Length + 1);
+                    text = Text::Join(parts, ']').SubStr(itemID.Length + 1);
                 } else {
                     text = "";
                 }
@@ -90,7 +90,7 @@ namespace IfaceRender {
                         auto parts = part.Split(']');
                         setID = parts[0];
                         if(parts.Length > 1){
-                            text = string::Join(parts, ']').SubStr(setID.Length + 1);
+                            text = Text::Join(parts, ']').SubStr(setID.Length + 1);
                         } else {
                             text = "";
                         }

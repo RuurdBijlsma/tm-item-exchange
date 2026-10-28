@@ -195,8 +195,8 @@ class IXEditor {
         string base = baseApp.LoadedManiaTitle.BaseTitleId;
 #endif
         if(mousePosFun !is null && clickFun !is null) {
-            auto screenHeight = Draw::GetHeight();
-            auto screenWidth = Draw::GetWidth();
+            auto screenHeight = Display::GetHeight();
+            auto screenWidth = Display::GetWidth();
             // Click screen at position to enter "create new item" UI
             auto xClick = screenWidth / 2;
             auto yClick = screenHeight / 2;
@@ -231,8 +231,8 @@ class IXEditor {
 
     bool EnterEditItemUI(CTrackMania@ app) {
         if(mousePosFun !is null && clickFun !is null) {
-            auto screenWidth = Draw::GetWidth();
-            auto screenHeight = Draw::GetHeight();
+            auto screenWidth = Display::GetWidth();
+            auto screenHeight = Display::GetHeight();
             auto xClick = screenWidth / 2;
             auto yClick = screenHeight / 2;
             mousePosFun.Call(true, xClick, yClick - 1);
@@ -431,8 +431,8 @@ class IXEditor {
     }
 
     void DrawText(const string &in text, int yOffset = 0, int fontSize = 100) {
-        auto screenHeight = Draw::GetHeight();
-        auto screenWidth = Draw::GetWidth();
+        auto screenHeight = Display::GetHeight();
+        auto screenWidth = Display::GetWidth();
         auto black = vec4(0, 0, 0, 1);
         auto white = vec4(1, 1, 1, 1);
         nvg::FontFace(Fonts::fontRegularHeader);

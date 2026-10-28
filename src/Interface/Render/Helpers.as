@@ -22,8 +22,8 @@ namespace IfaceRender {
             if (UI::IsItemHovered()) {
                 UI::BeginTooltip();
                 UI::Image(img.m_texture, vec2(
-                    Draw::GetWidth() * 0.4,
-                    thumbSize.y / (thumbSize.x / (Draw::GetWidth() * 0.4))
+                    Display::GetWidth() * 0.4,
+                    thumbSize.y / (thumbSize.x / (Display::GetWidth() * 0.4))
                 ));
                 UI::EndTooltip();
             }
