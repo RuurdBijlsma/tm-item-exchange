@@ -25,10 +25,7 @@ class IXEditor {
             @mousePosFun = lib.GetFunction("moveMouse");
         }
 
-        auto opFolder = IO::FromDataFolder('');
-        downloadFolder = opFolder + '/IX/';
-        if(!IO::FolderExists(downloadFolder))
-            IO::CreateFolder(downloadFolder);
+        downloadFolder = IO::FromStorageFolder('');
     }
 
     bool WaitForImport() {
@@ -44,40 +41,6 @@ class IXEditor {
             }
         }
         return true;
-    }
-
-    void CreateFolderRecursive(string basePath, string createPath){
-        string separator = "/";
-        basePath.Replace("\\", separator);
-        createPath.Replace("\\", separator);
-        // remove double //
-        while(basePath.Contains(separator + separator)){
-            basePath = basePath.Replace(separator + separator, separator);
-        }
-        while(createPath.Contains(separator + separator)){
-            createPath = createPath.Replace(separator + separator, separator);
-        }
-        // Format path to the following template
-        // basePath: C://Users/Ruurd/ (ends with separator)
-        // createPath: OpenplanetNext/Plugins/lib (no separator at start or end)
-        if(basePath.EndsWith(separator)){
-            basePath = basePath.SubStr(0, basePath.Length - 1);
-        }
-        if(createPath.StartsWith(separator)) {
-            createPath = createPath.SubStr(1);
-        }
-        if(createPath.EndsWith(separator)) {
-            createPath = createPath.SubStr(0, createPath.Length - 1);
-        }
-        auto parts = createPath.Split(separator);
-
-        string path = basePath;
-        for(uint i = 0; i < parts.Length; i++) {
-            if(!IO::FolderExists(path + separator + parts[i])) {
-                IO::CreateFolder(path + separator + parts[i]);
-            }
-            path += separator + parts[i];
-        }
     }
 
     bool CleanCanceledImport() {
@@ -96,8 +59,7 @@ class IXEditor {
         RequestItemTuple@[] requests = {};
         for(uint i = 0; i < items.Length; i++) {
             auto item = items[i];
-            auto itemFolder = item.GetRelativeFolder();
-            CreateFolderRecursive(downloadFolder, itemFolder);
+            IO::CreateFolder(Path::GetDirectoryName(item.GetCachePath()), true);
 
             if(!IO::FileExists(item.GetCachePath())) {
                 auto url = "https://" + MXURL + "/item/download/" + item.ID;                
@@ -165,9 +127,8 @@ class IXEditor {
                     UI::ShowNotification("Couldn't import item: " + item.Name);
                 }
             } else {
-                auto tmItemsFolder = GetItemsFolder();
-                CreateFolderRecursive(tmItemsFolder, itemFolder);
-                auto toFile = tmItemsFolder + desiredItemLocation;
+                auto toFile = Path::Join(GetItemsFolder(), desiredItemLocation);
+                IO::CreateFolder(Path::GetDirectoryName(toFile));
                 CopyFile(item.GetCachePath(), toFile);
             }
             if(importCanceled)
@@ -333,7 +294,7 @@ class IXEditor {
 
         // OVERWRITE ITEM WITH ACTUAL GBX FILE
         
-        auto itemLocation = GetItemsFolder() + desiredItemLocation;
+        auto itemLocation = Path::Join(GetItemsFolder(), desiredItemLocation);
         if(!IO::FileExists(itemLocation)) {
             // temp item wasn't created correctly
             warn("Temporary item wasn't created correctly!");
@@ -407,9 +368,8 @@ class IXEditor {
 
         auto parts = relativeDllPath.Split("/");
         string fileName = parts[parts.Length - 1];
-        const string baseFolder = IO::FromDataFolder('');
-        const string dllFolder = baseFolder + 'lib/';
-        const string localDllFile = dllFolder + fileName;
+        const string dllFolder = Path::Join(IO::FromDataFolder(''), 'lib');
+        const string localDllFile = Path::Join(dllFolder, fileName);
 
         if(!IO::FolderExists(dllFolder)) {
             IO::CreateFolder(dllFolder);

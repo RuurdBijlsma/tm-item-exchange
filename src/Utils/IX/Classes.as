@@ -205,14 +205,11 @@ namespace IX {
         }
 
         string GetCachePath() {
-            auto relativeFolder = GetRelativeFolder();
-            return ixEditor.downloadFolder + relativeFolder + this.FileName;
+            return Path::Join(ixEditor.downloadFolder, GetRelativeFolder() + this.FileName);
         }
 
         string GetDestinationPath() {
-            auto itemsFolder = GetItemsFolder();
-            auto relativeFolder = GetRelativeFolder();
-            return itemsFolder + relativeFolder + this.FileName;
+            return Path::Join(GetItemsFolder(), GetRelativeFolder() + this.FileName);
         }
 
         string GetRelativeFolder() {
