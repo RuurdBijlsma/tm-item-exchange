@@ -24,7 +24,7 @@ class WorkTab : Tab {
         if(!ixMenu.isInEditor) {
             UI::Text("Go to the editor to use this feature.");
         } else {
-            UI::BeginDisabled(Work::busy);
+            UI::BeginDisabled(Work::busy || ixEditor.isImporting);
             if(ixMenu.isInEditor && UI::PurpleButton("Scan & import items")) {
                 startnew(Work::ImportUnloaded);
             }
@@ -240,40 +240,54 @@ namespace Work {
     void ImportUnloaded() {
         if(busy) return;
         busy = true;
+        if(!ixEditor.WaitForImport()) {
+            busy = false;
+            return;
+        }
+
+        // Same cancel mechanism as IXEditor::ImportItems: Render() watches for V
+        // and sets importCanceled, which LoadItem() polls via YieldAndCheckCancel().
+        ixEditor.isImporting = true;
+        ixEditor.importCanceled = false;
+        ixEditor.subText = "Press V to cancel import";
         try {
             Work::Scan();
             if(!scanned) {
                 warn("Scan for items before calling import unloaded");
-                busy = false;
-                return;
-            }
-            for(int i = int(unloadedItems.Length) - 1; i >= 0; i--) {
-                auto path = unloadedItems[i];
-                auto relParts = path.Split(GetItemsFolder());
-                if(relParts.Length < 2) continue;
-                string relPath = relParts[1];
+            } else {
+                for(int i = int(unloadedItems.Length) - 1; i >= 0; i--) {
+                    if(ixEditor.importCanceled) break;
+                    auto path = unloadedItems[i];
+                    auto relParts = path.Split(GetItemsFolder());
+                    if(relParts.Length < 2) continue;
+                    string relPath = relParts[1];
 
-                print("Importing unloaded item: " + relPath);
-                // Unique name: a backup left behind by an interrupted run can never
-                // make this Move fail (IO::Move does not replace existing files).
-                string backupPath = path + "." + tostring(Time::Now) + ".tmp";
-                IO::Move(path, backupPath);
-                if(ixEditor.LoadItem(backupPath, relPath)) {
-                    IO::Delete(backupPath);
-                    unloadedItems.RemoveAt(i);
-                    importedItems.InsertLast(relPath);
-                } else {
-                    // LoadItem already re-created the item at `path` (Save As) and
-                    // copied the backup over it, so `path` normally exists here.
-                    // IO::Move does not replace an existing file, so remove it first.
-                    if(IO::FileExists(path))
-                        IO::Delete(path);
-                    IO::Move(backupPath, path);
+                    print("Importing unloaded item: " + relPath);
+                    // Unique name: a backup left behind by an interrupted run can never
+                    // make this Move fail (IO::Move does not replace existing files).
+                    string backupPath = path + "." + tostring(Time::Now) + ".tmp";
+                    IO::Move(path, backupPath);
+                    if(ixEditor.LoadItem(backupPath, relPath)) {
+                        IO::Delete(backupPath);
+                        unloadedItems.RemoveAt(i);
+                        importedItems.InsertLast(relPath);
+                    } else {
+                        // LoadItem already re-created the item at `path` (Save As) and
+                        // copied the backup over it, so `path` normally exists here.
+                        // IO::Move does not replace an existing file, so remove it first.
+                        if(IO::FileExists(path))
+                            IO::Delete(path);
+                        IO::Move(backupPath, path);
+                    }
                 }
             }
         } catch {
             error("Error while importing items: " + getExceptionInfo());
         }
+
+        ixEditor.subText = "";
+        ixEditor.isImporting = false;
+        ixEditor.importCanceled = false;
         busy = false;
     }
 }

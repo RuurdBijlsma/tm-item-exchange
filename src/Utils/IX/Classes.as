@@ -215,14 +215,17 @@ namespace IX {
         string GetRelativeFolder() {
             string itemFolder = "";
             if(Setting_AddPluginFolder)
-                itemFolder += Setting_PluginFolderName + '/';
+                itemFolder += SanitizePathComponent(Setting_PluginFolderName) + '/';
             if(Setting_AddAuthorFolder)
-                itemFolder += this.Username.Replace("/", "-") + '/';
+                itemFolder += SanitizePathComponent(this.Username) + '/';
             if(this.SetID != 0 && Setting_AddSetFolder)
-                itemFolder += this.SetName.Replace("/", "-") + '/';
+                itemFolder += SanitizePathComponent(this.SetName) + '/';
             if(this.SetID != 0 && Setting_UseSetDirectoryStructure) {
-                if(this.Directory != "")
-                    itemFolder += this.Directory.Replace("\\", "/") + '/';
+                if(this.Directory != "") {
+                    auto directory = SanitizeRelativeFolder(this.Directory);
+                    if(directory.Length > 0)
+                        itemFolder += directory + '/';
+                }
             }
             return itemFolder;
         }

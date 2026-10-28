@@ -90,3 +90,40 @@ bool IsDevMode(){
 string GetItemsFolder() {
     return IO::FromUserGameFolder("items/");
 }
+
+// Windows rejects these characters in file and folder names. Set names,
+// usernames and the directory structure inside a set come straight from the
+// API, so they can contain them (e.g. "Tiny Blocks - DecoWall (4/4: Slopes)",
+// where the leftover ':' makes IO::CreateFolder fail with
+// "The filename, directory name, or volume label syntax is incorrect").
+string SanitizePathComponent(const string &in name) {
+    string result = name;
+    string[] invalidChars = {"\\", "/", ":", "*", "?", "\"", "<", ">", "|"};
+    for(uint i = 0; i < invalidChars.Length; i++)
+        result = result.Replace(invalidChars[i], "-");
+    // Windows silently strips trailing dots and spaces, which would make the
+    // folder name on disk differ from the path checked afterwards.
+    while(result.Length > 0 && (result.EndsWith(".") || result.EndsWith(" ")))
+        result = result.SubStr(0, result.Length - 1);
+    if(result.Length == 0)
+        result = "_";
+    return result;
+}
+
+// Sanitizes every component of a relative folder path (components may be
+// separated by either kind of slash). Returns it with forward slashes and
+// without leading or trailing separators.
+string SanitizeRelativeFolder(const string &in path) {
+    string normalized = path.Replace("\\", "/");
+    auto parts = normalized.Split("/");
+    string result = "";
+    for(uint i = 0; i < parts.Length; i++) {
+        auto part = parts[i];
+        if(part.Length == 0 || part == "." || part == "..")
+            continue;
+        if(result.Length > 0)
+            result += "/";
+        result += SanitizePathComponent(part);
+    }
+    return result;
+}
