@@ -3,18 +3,14 @@ class HomePageTab : Tab {
 
     vec4 GetColor() override { return pluginColorVec; }
 
-    void RenderHome () {                
-        if (UI::Button(Icons::KeyboardO + " \\$zContact ManiaExchange")) OpenBrowserURL("https://" + MXURL + "/messaging/compose/11");
-        UI::SameLine();
-        if (UI::RedButton(Icons::Heart + " \\$zSupport ManiaExchange")) OpenBrowserURL("https://trackmania.exchange/support");
+    void RenderHome () {
+        if (UI::RedButton(Icons::Heart + " \\$zManiaExchange")) OpenBrowserURL("https://mania.exchange/");
         
         UI::PushStyleVar(UI::StyleVar::FramePadding, vec2(8, 4));
         UI::AlignTextToFramePadding();
         UI::Text("Follow the ManiaExchange network on");
         UI::SameLine();
         if (UI::Button(Icons::Facebook + " Facebook")) OpenBrowserURL("https://facebook.com/maniaexchange/");
-        UI::SameLine();
-        if (UI::Button(Icons::Twitter + " Twitter")) OpenBrowserURL("https://twitter.com/maniaexchange/");
         UI::SameLine();
         if (UI::Button(Icons::YoutubePlay + " YouTube")) OpenBrowserURL("https://youtube.com/maniaexchangetracks/");
         UI::SameLine();
